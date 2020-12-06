@@ -1,0 +1,88 @@
+# -*- coding: utf-8 -*-
+import requests
+from bs4 import BeautifulSoup
+import datetime
+import re
+import pandas as pd
+import time
+from retry import retry
+start = time.process_time()
+def getnews2(starttime,endtime,keywords):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36',
+    }
+    titlelis= []
+    urllis = []
+    dates = []
+    urllis2 = []
+    titles = []
+    years = []
+    months = []
+    days = []
+    dt = datetime.datetime.strptime(starttime, "%Y%m%d")
+    date = starttime[:]
+    while date <= endtime:
+        dates.append(date)
+        dt = dt + datetime.timedelta(1)
+        date = dt.strftime("%Y%m%d")
+    for a in dates:
+        year = a[0:4]
+        month = a[4:6]
+        day = a[6:8]
+        try:
+            res = requests.get('http://www.macaodaily.com/html/{0}-{1}/{2}/node_1.htm'.format(year,month,day),headers=headers,timeout=(10,20))
+            res.encoding = 'utf-8'
+            soup = BeautifulSoup(res.text,"lxml")
+        except:
+            continue
+        Index1 = soup.find_all("li")
+        for b in Index1:
+            try:
+                name = b.get_text()
+                url = "http://www.macaodaily.com/html/{0}-{1}/{2}/".format(year,month,day)+b.find("a")["href"]
+                print(url)
+                titlelis.append(name)
+                urllis.append(url)
+            except:
+                continue
+    for each_url,c in zip(urllis,range(len(urllis))):
+        try:
+            print("正在分析网址,",each_url)
+            print("分析到第{0}个，共{1}".format(c, len(urllis)))
+            try:
+                article = requests.get(each_url,headers=headers,timeout=(10,20))
+                article.encoding = 'utf-8'
+                soup_article = BeautifulSoup(article.text, "lxml")
+            except:
+                continue
+            Index2 = soup_article.find("div",{"id": "ozoom"}).get_text()
+        except:
+            continue
+        for d in keywords:
+            if d in Index2:
+                print(each_url,"有关键词",d)
+                urllis2.append(each_url)
+                titles.append(titlelis[c])
+                time = re.search("http://www.macaodaily.com/html/(.*?)-(.*?)/(.*?)/",each_url,re.S)
+                years.append(time.group(1))
+                months.append(time.group(2))
+                days.append(time.group(3))
+            else:
+                continue
+    news = {'year': years, 'month': months,
+               'day': days, 'title': titles, 'url': urllis2}
+    news1 = pd.DataFrame(news)
+    news2 = news1.drop_duplicates(subset='url', keep='first')
+    news2.to_csv('news2.csv', sep=',', encoding='utf-8-sig')
+    print(news)
+starttime = input("请输入开始时间: (如 20180201)")
+endtime = input("请输入结束时间: (如 20180210)")
+keywords = eval(input("请输入关键词: (如 ['澳門','珠海','北京'])"))
+getnews2(starttime,endtime,keywords)
+elapsed = (time.process_time() - start)
+print(elapsed)
+"""
+20201001
+20201123
+['特朗普','拜登','川普','美國大選','總統']
+"""
