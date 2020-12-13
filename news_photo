@@ -1,0 +1,17 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+data2 = pd.read_csv("news2.csv",sep=',')
+a = data2.groupby(["year", "month"]).size().reset_index(name='size')
+x = a["month"]
+y = a['size']
+
+x = [str(i) for i in x]
+
+plt.xticks(range(len(x)),x)
+
+plt.bar(range(len(x)),y,color='b')
+plt.xlabel("month")
+plt.ylabel("number")
+# plt.show()
+plt.savefig("news_photo2")
